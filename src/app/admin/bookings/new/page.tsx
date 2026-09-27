@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingForm } from "@/app/book/booking-form";
 import { loadBookingFormData } from "@/app/book/data";
+import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "จองให้ลูกค้า" };
 
 export default async function StaffBookingPage({ searchParams }: PageProps<"/admin/bookings/new">) {
+  await requireAdmin();
   const { service } = await searchParams;
   const data = await loadBookingFormData(service);
 

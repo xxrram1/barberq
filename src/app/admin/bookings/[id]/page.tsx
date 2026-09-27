@@ -8,10 +8,12 @@ import { listBookings } from "@/lib/queries";
 import { formatBaht, formatThaiDate, minToTime } from "@/lib/time";
 import { reviewPayment } from "../../actions";
 import { BookingActions } from "../../booking-actions";
+import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "รายละเอียดคิว" };
 
 export default async function AdminBookingDetail({ params, searchParams }: PageProps<"/admin/bookings/[id]">) {
+  await requireAdmin();
   const id = Number((await params).id);
   const { created } = await searchParams;
   const [b] = Number.isInteger(id) ? await listBookings(eq(bookings.id, id)) : [];

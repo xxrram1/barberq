@@ -6,10 +6,12 @@ import { BOOKING_STATUSES, bookings, type BookingStatus } from "@/db/schema";
 import { customerNameSql, customerPhoneSql, listBookings } from "@/lib/queries";
 import { formatBaht, formatThaiDate, isValidDate, minToTime, shopNow } from "@/lib/time";
 import { BookingActions } from "../booking-actions";
+import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "คิวทั้งหมด" };
 
 export default async function AdminBookingsPage({ searchParams }: PageProps<"/admin/bookings">) {
+  await requireAdmin();
   const sp = await searchParams;
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : undefined);
 

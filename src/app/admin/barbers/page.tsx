@@ -6,6 +6,7 @@ import { barbers } from "@/db/schema";
 import { saveBarber, toggleBarber } from "../actions";
 import { CatalogForm, type CatalogField } from "../catalog-form";
 import { PhotoUploader } from "./photo-uploader";
+import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "ช่าง" };
 
@@ -15,6 +16,7 @@ const FIELDS: CatalogField[] = [
 ];
 
 export default async function AdminBarbersPage() {
+  await requireAdmin();
   const list = await db.query.barbers.findMany({ orderBy: barbers.id });
 
   return (

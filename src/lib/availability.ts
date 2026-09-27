@@ -55,16 +55,18 @@ export async function loadBarberDays(conn: Db, date: string, barberIds: number[]
  * @returns reason = เหตุผลที่ช่างที่เลือกไม่ว่างทั้งวัน (ถ้ามี) ไว้แสดงให้ลูกค้าเห็น
  */
 export async function findSlots(q: SlotQuery, conn: Db = db, opts: { staff?: boolean } = {}) {
-  const service = await conn.query.services.findFirst({
-    where: and(eq(services.id, q.serviceId), eq(services.active, true)),
-  });
+  // สอง query นี้ไม่ขึ้นต่อกัน ดึงพร้อมกันเพื่อลดเวลารอไปกลับฐานข้อมูล
+  const [service, activeBarbers] = await Promise.all([
+    conn.query.services.findFirst({
+      where: and(eq(services.id, q.serviceId), eq(services.active, true)),
+    }),
+    conn.query.barbers.findMany({
+      where: q.barberId === "any" ? eq(barbers.active, true) : and(eq(barbers.id, q.barberId), eq(barbers.active, true)),
+      columns: { id: true, name: true },
+      orderBy: barbers.id,
+    }),
+  ]);
   if (!service) return { service: null, slots: [] as Slot[] };
-
-  const activeBarbers = await conn.query.barbers.findMany({
-    where: q.barberId === "any" ? eq(barbers.active, true) : and(eq(barbers.id, q.barberId), eq(barbers.active, true)),
-    columns: { id: true, name: true },
-    orderBy: barbers.id,
-  });
 
   const { map: barberDays, leaves } = await loadBarberDays(conn, q.date, activeBarbers.map((b) => b.id));
 

@@ -10,10 +10,12 @@ import { timeOptions, WEEKDAY_NAMES } from "@/lib/schedule";
 import { formatThaiDate, shopNow } from "@/lib/time";
 import { deleteTimeOff } from "./actions";
 import { ScheduleForm, TimeOffForm } from "./schedule-forms";
+import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "ตารางงานช่าง" };
 
 export default async function BarberSchedulePage({ params }: PageProps<"/admin/barbers/[id]">) {
+  await requireAdmin();
   const barberId = Number((await params).id);
   if (!Number.isInteger(barberId)) notFound();
 

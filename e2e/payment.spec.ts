@@ -85,8 +85,11 @@ test("คนอื่นดูสลิปและรายละเอีย�
   const other = await otherCtx.newPage();
   await login(other, USERS.somchai);
   expect((await other.request.get(`/api/slips/${id}`)).status()).toBe(404);
-  const res = await other.goto(`/bookings/${id}`);
-  expect(res?.status()).toBe(404);
+  // หน้าเว็บส่งแบบ streaming (มี loading.tsx) สถานะ HTTP จึงเป็น 200 แต่เนื้อหาต้องเป็นหน้า "ไม่พบ" และไม่มีข้อมูลคิวหลุด
+  await other.goto(`/bookings/${id}`);
+  await expect(other.getByRole("heading", { name: "ไม่พบหน้านี้" })).toBeVisible();
+  await expect(other.getByText(`หมายเลขคิว #${id}`)).toHaveCount(0);
+  await expect(other.getByRole("img", { name: /QR พร้อมเพย์/ })).toHaveCount(0);
   await otherCtx.close();
 
   // ไม่ได้ล็อกอินก็เปิดไม่ได้

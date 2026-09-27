@@ -76,3 +76,22 @@ export async function Navbar() {
     </header>
   );
 }
+
+/** แสดงระหว่างรอตรวจ session: โครงเดียวกับ navbar จริง หน้าจะได้ไม่กระตุก */
+export function NavbarSkeleton() {
+  return (
+    <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
+      <div className="barber-stripe h-1" />
+      <nav className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
+        <Link href="/" className="flex items-center gap-2 font-display text-xl font-bold">
+          <span className="grid size-8 place-items-center rounded-lg bg-ink text-sm text-paper">✂</span>
+          {SHOP.name}
+        </Link>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="h-8 w-20 animate-pulse rounded-lg bg-stone-200/80" />
+          <div className="size-9 animate-pulse rounded-full bg-stone-200/80" />
+        </div>
+      </nav>
+    </header>
+  );
+}

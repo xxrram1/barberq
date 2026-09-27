@@ -7,10 +7,12 @@ import { SHOP } from "@/lib/config";
 import { listBookings, type BookingRow } from "@/lib/queries";
 import { formatBaht, formatThaiDate, minToTime, shopNow } from "@/lib/time";
 import { BookingActions } from "./booking-actions";
+import { requireAdmin } from "@/lib/auth";
 
 const PX_PER_MIN = 1.1;
 
 export default async function AdminDashboard() {
+  await requireAdmin();
   const now = shopNow();
   const month = now.date.slice(0, 7);
 

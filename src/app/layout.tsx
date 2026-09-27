@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Noto_Sans_Thai, Prompt } from "next/font/google";
 import { Footer } from "@/components/footer";
-import { Navbar } from "@/components/navbar";
+import { Suspense } from "react";
+import { Navbar, NavbarSkeleton } from "@/components/navbar";
 import { SHOP } from "@/lib/config";
 import "./globals.css";
 
@@ -25,9 +26,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="th" className={`${body.variable} ${heading.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <Navbar />
+        {/* navbar/footer อ่าน cookie เพื่อดูว่าใครล็อกอิน: แยกเป็น Suspense ไว้ ไม่ให้หน้าหลักต้องรอ */}
+        <Suspense fallback={<NavbarSkeleton />}>
+          <Navbar />
+        </Suspense>
         <main className="flex-1">{children}</main>
-        <Footer />
+        <Suspense fallback={<div className="h-72 bg-ink" />}>
+          <Footer />
+        </Suspense>
       </body>
     </html>
   );

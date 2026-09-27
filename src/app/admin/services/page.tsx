@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { services } from "@/db/schema";
 import { saveService, toggleService } from "../actions";
 import { CatalogForm, type CatalogField } from "../catalog-form";
+import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "บริการ" };
 
@@ -15,6 +16,7 @@ const FIELDS: CatalogField[] = [
 ];
 
 export default async function AdminServicesPage() {
+  await requireAdmin();
   const list = await db.query.services.findMany({ orderBy: services.id });
 
   return (

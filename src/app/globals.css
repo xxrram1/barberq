@@ -59,3 +59,21 @@ body {
 @utility card {
   @apply rounded-2xl border border-line bg-white;
 }
+
+/* แถบโหลดลายเสาร้านตัดผมวิ่งไปทางขวา */
+@keyframes barber-slide {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.loading-bar {
+  animation: barber-slide 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-bar {
+    animation: none;
+  }
+}

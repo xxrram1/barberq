@@ -2,14 +2,14 @@ import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ConfirmButton, PaymentBadge, StaffBadge, StatusBadge } from "@/components/ui";
+import { PaymentBadge, StaffBadge, StatusBadge, SubmitButton } from "@/components/ui";
 import { bookings } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { canCustomerCancel, isUpcoming } from "@/lib/booking-rules";
 import { SHOP } from "@/lib/config";
 import { listBookings, type BookingRow } from "@/lib/queries";
 import { formatBaht, formatThaiDate, minToTime, shopNow } from "@/lib/time";
-import { cancelMyBooking } from "./actions";
+import { CancelBookingForm } from "./cancel-form";
 
 export const metadata: Metadata = { title: "คิวของฉัน" };
 
@@ -98,10 +98,11 @@ function BookingCard({ b, cancellable, compact }: { b: BookingRow; cancellable?:
             </Link>
           )}
           {cancellable ? (
-            <form action={cancelMyBooking}>
-              <input type="hidden" name="id" value={b.id} />
-              <ConfirmButton message="ต้องการยกเลิกคิวนี้ใช่ไหม?">ยกเลิก</ConfirmButton>
-            </form>
+            <CancelBookingForm booking={b}>
+              <SubmitButton className="btn-danger btn-sm" pendingText="...">
+                ยกเลิก
+              </SubmitButton>
+            </CancelBookingForm>
           ) : (
             <span className="text-xs text-muted" title={`ยกเลิกออนไลน์ได้ก่อนเวลานัด ${SHOP.cancelCutoffMin / 60} ชม.`}>
               ติดต่อร้านเพื่อยกเลิก

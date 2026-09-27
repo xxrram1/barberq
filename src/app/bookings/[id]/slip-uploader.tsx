@@ -1,12 +1,18 @@
 "use client";
 
 import { startTransition, useActionState, useState, useTransition } from "react";
+import { useFeedback } from "@/components/feedback";
 import { compressImage } from "@/lib/image-client";
 import { MAX_SLIP_BYTES } from "@/lib/slip";
 import { uploadSlip, type SlipState } from "../actions";
 
 export function SlipUploader({ bookingId, resubmit }: { bookingId: number; resubmit?: boolean }) {
-  const [state, formAction, pending] = useActionState<SlipState, FormData>(uploadSlip, {});
+  const { toast } = useFeedback();
+  const [state, formAction, pending] = useActionState<SlipState, FormData>(async (prev, fd) => {
+    const result = await uploadSlip(prev, fd);
+    if (result.ok) toast.success("ส่งสลิปเรียบร้อย รอร้านตรวจสอบ");
+    return result;
+  }, {});
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [clientError, setClientError] = useState<string | null>(null);
@@ -65,7 +71,6 @@ export function SlipUploader({ bookingId, resubmit }: { bookingId: number; resub
           {clientError ?? state.error}
         </p>
       )}
-      {state.ok && !busy && <p className="text-sm text-emerald-700">ส่งสลิปเรียบร้อย รอร้านตรวจสอบ ✓</p>}
 
       <button type="submit" className="btn-brass w-full" disabled={!file || busy}>
         {compressing ? "กำลังเตรียมรูป..." : pending ? "กำลังส่ง..." : "ส่งสลิป"}

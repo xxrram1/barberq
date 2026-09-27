@@ -167,7 +167,7 @@ export default async function AdminDashboard() {
                       </div>
                     </div>
                     <div className="mt-2">
-                      <BookingActions id={b.id} status={b.status} />
+                      <BookingActions id={b.id} status={b.status} who={`${b.customerName} · ${formatThaiDate(b.date, "short")} ${minToTime(b.startMin)} น.`} />
                     </div>
                   </li>
                 ))}

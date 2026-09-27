@@ -103,7 +103,7 @@ export default async function AdminBookingsPage({ searchParams }: PageProps<"/ad
                   <div className="text-xs text-muted">{formatThaiDate(b.date, "short")}</div>
                 </td>
                 <td className="px-4 py-3">
-                  <Link href={`/admin/bookings/${b.id}`} className="font-medium hover:text-brass hover:underline">
+                  <Link href={`/admin/bookings/${b.id}`} className="block font-medium hover:text-brass hover:underline">
                     {b.customerName}
                   </Link>
                   <a href={`tel:${b.customerPhone}`} className="text-xs text-muted hover:text-brass">
@@ -124,7 +124,7 @@ export default async function AdminBookingsPage({ searchParams }: PageProps<"/ad
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <BookingActions id={b.id} status={b.status} />
+                  <BookingActions id={b.id} status={b.status} who={`${b.customerName} · ${formatThaiDate(b.date, "short")} ${minToTime(b.startMin)} น.`} />
                 </td>
               </tr>
             ))}

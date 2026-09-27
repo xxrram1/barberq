@@ -2,13 +2,19 @@
 
 import { startTransition, useActionState, useState, useTransition } from "react";
 import { BarberAvatar } from "@/components/barber-avatar";
-import { ConfirmButton } from "@/components/ui";
+import { ActionForm, useFeedback } from "@/components/feedback";
+import { SubmitButton } from "@/components/ui";
 import { compressImage } from "@/lib/image-client";
 import { MAX_PHOTO_BYTES } from "@/lib/slip";
 import { removeBarberPhoto, uploadBarberPhoto, type FormState } from "../actions";
 
 export function PhotoUploader({ barber }: { barber: { id: number; name: string; photoVersion: number } }) {
-  const [state, formAction, pending] = useActionState<FormState, FormData>(uploadBarberPhoto, {});
+  const { toast } = useFeedback();
+  const [state, formAction, pending] = useActionState<FormState, FormData>(async (prev, fd) => {
+    const result = await uploadBarberPhoto(prev, fd);
+    if (result.ok) toast.success(`อัปเดตรูปของ${barber.name}แล้ว`);
+    return result;
+  }, {});
   const [clientError, setClientError] = useState<string | null>(null);
   const [preparing, startPreparing] = useTransition();
   const busy = pending || preparing;
@@ -56,15 +62,26 @@ export function PhotoUploader({ barber }: { barber: { id: number; name: string; 
             />
           </label>
           {barber.photoVersion > 0 && (
-            <form action={removeBarberPhoto}>
+            <ActionForm
+              action={removeBarberPhoto}
+              success="ลบรูปแล้ว"
+              confirm={{
+                title: `ลบรูปของ${barber.name}?`,
+                message: "หน้าเว็บจะแสดงตัวอักษรแรกของชื่อแทน อัปโหลดรูปใหม่ได้ตลอด",
+                confirmLabel: "ลบรูป",
+                danger: true,
+              }}
+            >
               <input type="hidden" name="barberId" value={barber.id} />
-              <ConfirmButton message={`ลบรูปของ${barber.name}?`}>ลบรูป</ConfirmButton>
-            </form>
+              <SubmitButton className="btn-danger btn-sm" pendingText="...">
+                ลบรูป
+              </SubmitButton>
+            </ActionForm>
           )}
         </div>
-        {(clientError || state.error) && <p className="text-xs text-red-600">{clientError ?? state.error}</p>}
-        {state.ok && !busy && <p className="text-xs text-emerald-700">อัปเดตรูปแล้ว ✓</p>}
-        {!clientError && !state.error && !state.ok && (
+        {clientError || state.error ? (
+          <p className="text-xs text-red-600">{clientError ?? state.error}</p>
+        ) : (
           <p className="text-xs text-muted">ระบบจะตัดเป็นสี่เหลี่ยมจัตุรัสจากกึ่งกลางรูปให้</p>
         )}
       </div>

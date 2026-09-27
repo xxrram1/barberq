@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import QRCode from "qrcode";
-import { ConfirmButton, PaymentBadge, StaffBadge, StatusBadge } from "@/components/ui";
+import { PaymentBadge, StaffBadge, StatusBadge, SubmitButton } from "@/components/ui";
 import { bookings } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { canCustomerCancel } from "@/lib/booking-rules";
@@ -11,7 +11,7 @@ import { SHOP } from "@/lib/config";
 import { promptPayPayload } from "@/lib/promptpay";
 import { listBookings } from "@/lib/queries";
 import { formatBaht, formatThaiDate, minToTime } from "@/lib/time";
-import { cancelMyBooking } from "../actions";
+import { CancelBookingForm } from "../cancel-form";
 import { SlipUploader } from "./slip-uploader";
 
 export const metadata: Metadata = { title: "รายละเอียดคิว" };
@@ -86,14 +86,15 @@ export default async function BookingDetailPage({ params, searchParams }: PagePr
 
             <div className="mt-6 border-t border-line pt-5">
               {canCustomerCancel(b) ? (
-                <form action={cancelMyBooking} className="flex items-center justify-between gap-3">
-                  <input type="hidden" name="id" value={b.id} />
+                <CancelBookingForm booking={b} className="flex items-center justify-between gap-3">
                   <span className="text-xs text-muted">
                     ยกเลิกได้ก่อนเวลานัด {SHOP.cancelCutoffMin / 60} ชม.
                     {b.paymentStatus === "verified" && " · ร้านจะติดต่อคืนมัดจำ"}
                   </span>
-                  <ConfirmButton message="ต้องการยกเลิกคิวนี้ใช่ไหม?">ยกเลิกคิว</ConfirmButton>
-                </form>
+                  <SubmitButton className="btn-danger btn-sm" pendingText="...">
+                    ยกเลิกคิว
+                  </SubmitButton>
+                </CancelBookingForm>
               ) : (
                 active && <p className="text-xs text-muted">ต้องการเปลี่ยนแปลงหรือยกเลิก กรุณาติดต่อร้าน</p>
               )}

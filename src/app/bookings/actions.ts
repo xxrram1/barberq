@@ -8,14 +8,15 @@ import { requireUser } from "@/lib/auth";
 import { canCustomerCancel } from "@/lib/booking-rules";
 import { MAX_SLIP_BYTES, sniffImageType } from "@/lib/slip";
 
-export async function cancelMyBooking(formData: FormData) {
+export async function cancelMyBooking(formData: FormData): Promise<{ error?: string }> {
   const user = await requireUser("/bookings");
   const id = Number(formData.get("id"));
 
   const booking = await db.query.bookings.findFirst({
     where: and(eq(bookings.id, id), eq(bookings.userId, user.id)),
   });
-  if (!booking || !canCustomerCancel(booking)) return;
+  if (!booking) return { error: "ไม่พบคิวนี้" };
+  if (!canCustomerCancel(booking)) return { error: "ใกล้ถึงเวลานัดแล้ว กรุณาติดต่อร้านเพื่อยกเลิก" };
 
   await db
     .update(bookings)
@@ -25,6 +26,7 @@ export async function cancelMyBooking(formData: FormData) {
   revalidatePath("/bookings");
   revalidatePath(`/bookings/${id}`);
   revalidatePath("/admin", "layout");
+  return {};
 }
 
 export type SlipState = { ok?: boolean; error?: string };

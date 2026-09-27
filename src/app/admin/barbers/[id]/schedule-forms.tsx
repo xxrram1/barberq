@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useFeedback } from "@/components/feedback";
 import { minToTime } from "@/lib/time";
 import { addTimeOff, saveSchedule, type ScheduleState, type TimeOffState } from "./actions";
 
@@ -19,7 +20,13 @@ export function ScheduleForm({
   closedWeekdays: number[];
   times: number[];
 }) {
-  const [state, action, pending] = useActionState<ScheduleState, FormData>(saveSchedule, {});
+  const { toast } = useFeedback();
+  const [state, action, pending] = useActionState<ScheduleState, FormData>(async (prev, fd) => {
+    const result = await saveSchedule(prev, fd);
+    if (result.ok && result.warning) toast.info("บันทึกตารางงานแล้ว แต่มีคิวที่อยู่นอกเวลาทำงานใหม่ ดูรายการด้านล่าง");
+    else if (result.ok) toast.success("บันทึกตารางงานเรียบร้อย");
+    return result;
+  }, {});
   const [on, setOn] = useState(() => new Set(schedule.map((s) => s.weekday)));
 
   // เริ่มสัปดาห์ที่วันจันทร์ ตามที่คนไทยคุ้นเคย
@@ -71,7 +78,6 @@ export function ScheduleForm({
       {state.warning && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">⚠ บันทึกแล้ว แต่{state.warning}</p>
       )}
-      {state.ok && !state.warning && !pending && <p className="text-sm text-emerald-700">บันทึกตารางงานเรียบร้อย ✓</p>}
 
       <button type="submit" className="btn-primary" disabled={pending}>
         {pending ? "กำลังบันทึก..." : "บันทึกตารางงาน"}
@@ -93,7 +99,12 @@ function TimeSelect({ name, times, value }: { name: string; times: number[]; val
 }
 
 export function TimeOffForm({ barberId, today }: { barberId: number; today: string }) {
-  const [state, action, pending] = useActionState<TimeOffState, FormData>(addTimeOff, {});
+  const { toast } = useFeedback();
+  const [state, action, pending] = useActionState<TimeOffState, FormData>(async (prev, fd) => {
+    const result = await addTimeOff(prev, fd);
+    if (result.ok) toast.success("บันทึกวันลาเรียบร้อย");
+    return result;
+  }, {});
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [reason, setReason] = useState("");
@@ -153,7 +164,6 @@ export function TimeOffForm({ barberId, today }: { barberId: number; today: stri
           <p className="mt-2 text-xs">ถ้ายืนยัน คิวเหล่านี้จะยังอยู่ ต้องติดต่อลูกค้าเพื่อย้ายหรือยกเลิกเอง</p>
         </div>
       )}
-      {state.ok && !pending && <p className="text-sm text-emerald-700">บันทึกวันลาเรียบร้อย ✓</p>}
 
       {hasConflicts && <input type="hidden" name="force" value={state.checked} />}
       <button type="submit" className={hasConflicts ? "btn-brass" : "btn-primary"} disabled={pending}>

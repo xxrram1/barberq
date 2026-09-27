@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import QRCode from "qrcode";
-import { login, openDate, pickBooking, USERS } from "./helpers";
+import { confirmDialog, login, openDate, pickBooking, toast, USERS } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await login(page, USERS.admin);
@@ -17,7 +17,7 @@ test("อัปโหลดรูปโปรไฟล์ช่าง แสด�
   // รูปแนวนอน ระบบต้องตัดเป็นจัตุรัสให้
   const photo = await QRCode.toBuffer("barber photo", { width: 800 });
   await page.getByLabel("อัปโหลดรูปของช่างเอ็ม").setInputFiles({ name: "m.png", mimeType: "image/png", buffer: photo });
-  await expect(page.getByText("อัปเดตรูปแล้ว")).toBeVisible();
+  await expect(toast(page, "อัปเดตรูปของช่างเอ็มแล้ว")).toBeVisible();
 
   const avatar = page.locator('img[src^="/api/barbers/"]').first();
   await expect(avatar).toBeVisible();
@@ -37,8 +37,9 @@ test("อัปโหลดรูปโปรไฟล์ช่าง แสด�
   await ctx.close();
 
   // ลบรูป → กลับไปเป็นตัวอักษร
-  page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "ลบรูป" }).click();
+  await confirmDialog(page, "ลบรูป");
+  await expect(toast(page, "ลบรูปแล้ว")).toBeVisible();
   await expect(page.locator('img[src^="/api/barbers/"]')).toHaveCount(0);
 });
 
@@ -49,10 +50,50 @@ test("แอดมินยืนยันคิวที่รออยู่�
   expect(before).toBeGreaterThan(0);
 
   await rows.first().getByRole("button", { name: "ยืนยัน" }).click();
+  await expect(toast(page, "ยืนยันคิวแล้ว")).toBeVisible();
   await expect(rows).toHaveCount(before - 1);
 
   await page.goto("/admin/bookings?status=confirmed&date=");
   await expect(page.locator("tbody tr").first()).toContainText("ยืนยันแล้ว");
+});
+
+test("ยกเลิกคิวต้องยืนยันก่อน: กด Esc แล้วไม่มีอะไรเปลี่ยน, กดยืนยันแล้วคิวถูกยกเลิก", async ({ page }) => {
+  await page.goto("/admin/bookings?status=pending&date=");
+  const rows = page.locator("tbody tr");
+  const before = await rows.count();
+  const cancelFirst = () => rows.first().getByRole("button", { name: "ยกเลิก", exact: true }).click();
+
+  // เปิดหน้าต่างยืนยัน แล้วกด Esc = ยกเลิกการกระทำ
+  await cancelFirst();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("ยกเลิกคิวนี้?");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(rows).toHaveCount(before);
+
+  // กดยืนยันจริง
+  await cancelFirst();
+  await expect(dialog).toBeVisible();
+  await page.waitForTimeout(400); // รอ animation จบก่อนถ่ายภาพ
+  await page.screenshot({ path: "test-results/screens/confirm-dialog.png" });
+  await confirmDialog(page, "ยกเลิกคิว");
+  await expect(toast(page, "ยกเลิกคิวแล้ว")).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: "test-results/screens/toast.png" });
+  await expect(rows).toHaveCount(before - 1);
+});
+
+test("ปิดบริการต้องยืนยันก่อน และเปิดกลับได้พร้อม toast", async ({ page }) => {
+  await page.goto("/admin/services");
+  const card = page.locator("li", { hasText: "#" }).last();
+  await card.getByRole("button", { name: "ปิดบริการ" }).click();
+  await confirmDialog(page, "ปิดบริการ");
+  await expect(toast(page, /ปิดบริการ ".+" แล้ว/)).toBeVisible();
+  await expect(card).toContainText("ปิดให้บริการ");
+
+  await card.getByRole("button", { name: "เปิดบริการ" }).click(); // เปิดกลับไม่ต้องยืนยัน
+  await expect(toast(page, /เปิดบริการ ".+" แล้ว/)).toBeVisible();
+  await expect(card.getByRole("button", { name: "ปิดบริการ" })).toBeVisible();
 });
 
 test("บันทึกวันลาแล้วลูกค้าจองช่างคนนั้นในวันนั้นไม่ได้", async ({ page }) => {

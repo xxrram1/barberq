@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useFeedback } from "@/components/feedback";
 import type { FormState } from "./actions";
 
 export type CatalogField = {
@@ -18,13 +19,23 @@ export function CatalogForm({
   fields,
   initial,
   submitLabel = "บันทึก",
+  successMessage,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   fields: CatalogField[];
   initial?: { id: number; [key: string]: unknown };
   submitLabel?: string;
+  successMessage?: string;
 }) {
-  const [state, formAction, pending] = useActionState(action, {});
+  const { toast } = useFeedback();
+  const [state, formAction, pending] = useActionState<FormState, FormData>(async (prev, formData) => {
+    const result = await action(prev, formData);
+    if (result.ok) {
+      const name = String(formData.get("name") ?? "").trim();
+      toast.success(successMessage ?? `บันทึก "${name}" เรียบร้อย`);
+    }
+    return result;
+  }, {});
 
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-3">
@@ -47,7 +58,6 @@ export function CatalogForm({
         {pending ? "กำลังบันทึก..." : submitLabel}
       </button>
       {state.error && <p className="w-full text-xs text-red-600">{state.error}</p>}
-      {state.ok && !pending && <p className="w-full text-xs text-emerald-700">บันทึกเรียบร้อย ✓</p>}
     </form>
   );
 }

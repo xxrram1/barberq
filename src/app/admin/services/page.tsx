@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ActionForm } from "@/components/feedback";
 import { SubmitButton } from "@/components/ui";
 import { db } from "@/db";
 import { services } from "@/db/schema";
@@ -28,7 +29,7 @@ export default async function AdminServicesPage() {
 
       <section className="card border-dashed p-5">
         <h2 className="mb-3 font-medium">+ เพิ่มบริการใหม่</h2>
-        <CatalogForm action={saveService} fields={FIELDS} submitLabel="เพิ่มบริการ" />
+        <CatalogForm action={saveService} fields={FIELDS} submitLabel="เพิ่มบริการ" successMessage="เพิ่มบริการใหม่แล้ว" />
       </section>
 
       <ul className="space-y-3">
@@ -36,13 +37,26 @@ export default async function AdminServicesPage() {
           <li key={s.id} className={`card p-5 ${s.active ? "" : "bg-stone-50 opacity-70"}`}>
             <div className="mb-3 flex items-center justify-between gap-2">
               <span className="text-xs text-muted">#{s.id} {s.active ? "" : "· ปิดให้บริการ"}</span>
-              <form action={toggleService}>
+              <ActionForm
+                action={toggleService}
+                success={s.active ? `ปิดบริการ "${s.name}" แล้ว` : `เปิดบริการ "${s.name}" แล้ว`}
+                confirm={
+                  s.active
+                    ? {
+                        title: `ปิดบริการ "${s.name}"?`,
+                        message: "ลูกค้าจะจองบริการนี้ไม่ได้ คิวที่จองไว้แล้วยังอยู่ครบ เปิดกลับได้ตลอด",
+                        confirmLabel: "ปิดบริการ",
+                        danger: true,
+                      }
+                    : undefined
+                }
+              >
                 <input type="hidden" name="id" value={s.id} />
                 <input type="hidden" name="active" value={String(!s.active)} />
                 <SubmitButton className={s.active ? "btn-danger btn-sm" : "btn-brass btn-sm"} pendingText="...">
                   {s.active ? "ปิดบริการ" : "เปิดบริการ"}
                 </SubmitButton>
-              </form>
+              </ActionForm>
             </div>
             <CatalogForm action={saveService} fields={FIELDS} initial={s} />
           </li>

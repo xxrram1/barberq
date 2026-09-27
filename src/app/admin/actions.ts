@@ -29,14 +29,15 @@ export async function setBookingStatus(formData: FormData) {
 }
 
 /** ตรวจสลิป: ผ่าน = ยืนยันคิวให้อัตโนมัติ, ไม่ผ่าน = ลูกค้าส่งสลิปใหม่ได้ */
-export async function reviewPayment(formData: FormData) {
+export async function reviewPayment(formData: FormData): Promise<{ error?: string }> {
   await requireAdmin();
   const input = z
     .object({ id, decision: z.enum(["verified", "rejected"]) })
     .parse(Object.fromEntries(formData));
 
   const booking = await db.query.bookings.findFirst({ where: eq(bookings.id, input.id) });
-  if (!booking || booking.paymentStatus !== "submitted") return;
+  if (!booking) return { error: "ไม่พบคิวนี้" };
+  if (booking.paymentStatus !== "submitted") return { error: "สลิปนี้ถูกตรวจไปแล้ว" };
 
   await db
     .update(bookings)
@@ -47,6 +48,7 @@ export async function reviewPayment(formData: FormData) {
     .where(eq(bookings.id, input.id));
   refresh();
   revalidatePath(`/bookings/${input.id}`);
+  return {};
 }
 
 // ---------- บริการ ----------

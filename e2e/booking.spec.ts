@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, openDate, pickBooking, USERS } from "./helpers";
+import { confirmDialog, login, openDate, pickBooking, toast, USERS } from "./helpers";
 
 test("ลูกค้าจองคิวได้ และยกเลิกคิวเองได้", async ({ page }) => {
   const date = openDate(10);
@@ -22,9 +22,10 @@ test("ลูกค้าจองคิวได้ และยกเลิก�
 
   // ยกเลิกคิว (มี confirm dialog)
   await page.goto("/bookings");
-  page.once("dialog", (d) => d.accept());
   const card = page.locator(`[data-booking-id="${bookingId}"]`);
   await card.getByRole("button", { name: "ยกเลิก" }).click();
+  await confirmDialog(page, "ยกเลิกคิว");
+  await expect(toast(page, "ยกเลิกคิวเรียบร้อยแล้ว")).toBeVisible();
   // ย้ายไปอยู่ในประวัติ พร้อมสถานะ "ยกเลิก" และไม่มีปุ่มให้กดแล้ว
   await expect(card.getByText("ยกเลิก", { exact: true })).toBeVisible();
   await expect(card.getByRole("button")).toHaveCount(0);

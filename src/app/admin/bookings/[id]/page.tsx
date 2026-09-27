@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ActionForm } from "@/components/feedback";
 import { PaymentBadge, StaffBadge, StatusBadge, SubmitButton } from "@/components/ui";
 import { bookings } from "@/db/schema";
 import { listBookings } from "@/lib/queries";
@@ -69,7 +70,7 @@ export default async function AdminBookingDetail({ params, searchParams }: PageP
           </dl>
           {b.note && <p className="mt-5 rounded-lg bg-paper p-3 text-sm text-stone-600">“{b.note}”</p>}
           <div className="mt-6 border-t border-line pt-5">
-            <BookingActions id={b.id} status={b.status} />
+            <BookingActions id={b.id} status={b.status} who={`${b.customerName} · ${formatThaiDate(b.date, "short")} ${minToTime(b.startMin)} น.`} />
           </div>
         </section>
 
@@ -94,16 +95,33 @@ export default async function AdminBookingDetail({ params, searchParams }: PageP
               </p>
               {b.paymentStatus === "submitted" && (
                 <div className="mt-4 flex justify-center gap-2">
-                  <form action={reviewPayment}>
+                  <ActionForm
+                    action={reviewPayment}
+                    success="ยืนยันการชำระแล้ว คิวถูกยืนยันอัตโนมัติ"
+                    confirm={{
+                      title: `ได้รับยอด ${formatBaht(b.deposit)} แล้วใช่ไหม?`,
+                      message: "เช็กในแอปธนาคารให้แน่ใจว่าเงินเข้าจริงก่อนยืนยัน",
+                      confirmLabel: "ยอดเข้าแล้ว",
+                    }}
+                  >
                     <input type="hidden" name="id" value={b.id} />
                     <input type="hidden" name="decision" value="verified" />
                     <SubmitButton className="btn-primary">✓ ยอดเข้าแล้ว ยืนยันคิว</SubmitButton>
-                  </form>
-                  <form action={reviewPayment}>
+                  </ActionForm>
+                  <ActionForm
+                    action={reviewPayment}
+                    success="แจ้งลูกค้าให้ส่งสลิปใหม่แล้ว"
+                    confirm={{
+                      title: "ปฏิเสธสลิปนี้?",
+                      message: "ลูกค้าจะเห็นว่าสลิปไม่ถูกต้อง และต้องส่งสลิปใหม่",
+                      confirmLabel: "สลิปไม่ถูกต้อง",
+                      danger: true,
+                    }}
+                  >
                     <input type="hidden" name="id" value={b.id} />
                     <input type="hidden" name="decision" value="rejected" />
                     <SubmitButton className="btn-danger">สลิปไม่ถูกต้อง</SubmitButton>
-                  </form>
+                  </ActionForm>
                 </div>
               )}
             </>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ActionForm } from "@/components/feedback";
 import { SubmitButton } from "@/components/ui";
 import { db } from "@/db";
 import { barbers } from "@/db/schema";
@@ -28,7 +29,7 @@ export default async function AdminBarbersPage() {
 
       <section className="card border-dashed p-5">
         <h2 className="mb-3 font-medium">+ เพิ่มช่างใหม่</h2>
-        <CatalogForm action={saveBarber} fields={FIELDS} submitLabel="เพิ่มช่าง" />
+        <CatalogForm action={saveBarber} fields={FIELDS} submitLabel="เพิ่มช่าง" successMessage="เพิ่มช่างใหม่แล้ว (ตั้งกะงานเต็มเวลาร้านให้อัตโนมัติ)" />
       </section>
 
       <ul className="space-y-3">
@@ -40,13 +41,26 @@ export default async function AdminBarbersPage() {
                 <Link href={`/admin/barbers/${b.id}`} className="btn-ghost btn-sm">
                   🗓 ตารางงาน / วันลา
                 </Link>
-                <form action={toggleBarber}>
+                <ActionForm
+                  action={toggleBarber}
+                  success={b.active ? `${b.name}พักงานแล้ว` : `${b.name}กลับมาทำงานแล้ว`}
+                  confirm={
+                    b.active
+                      ? {
+                          title: `ให้${b.name}พักงาน?`,
+                          message: "ลูกค้าจะจองช่างคนนี้ไม่ได้ คิวที่มีอยู่แล้วยังอยู่ครบ ต้องติดต่อลูกค้าเองถ้าจะย้ายคิว",
+                          confirmLabel: "พักงาน",
+                          danger: true,
+                        }
+                      : undefined
+                  }
+                >
                   <input type="hidden" name="id" value={b.id} />
                   <input type="hidden" name="active" value={String(!b.active)} />
                   <SubmitButton className={b.active ? "btn-danger btn-sm" : "btn-brass btn-sm"} pendingText="...">
                     {b.active ? "พักงาน" : "กลับมาทำงาน"}
                   </SubmitButton>
-                </form>
+                </ActionForm>
               </div>
             </div>
             <div className="mb-4 border-b border-line pb-4">

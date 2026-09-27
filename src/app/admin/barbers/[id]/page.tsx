@@ -2,7 +2,8 @@ import { and, asc, eq, gte } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ConfirmButton } from "@/components/ui";
+import { ActionForm } from "@/components/feedback";
+import { SubmitButton } from "@/components/ui";
 import { db } from "@/db";
 import { barberSchedules, barberTimeOff, barbers } from "@/db/schema";
 import { SHOP } from "@/lib/config";
@@ -74,11 +75,24 @@ export default async function BarberSchedulePage({ params }: PageProps<"/admin/b
                       </div>
                       {l.reason && <div className="text-xs text-muted">{l.reason}</div>}
                     </div>
-                    <form action={deleteTimeOff}>
+                    <ActionForm
+                      action={deleteTimeOff}
+                      success="ลบวันลาแล้ว"
+                      confirm={{
+                        title: "ลบวันลานี้?",
+                        message: `${barber.name}จะกลับมารับคิวในช่วง ${formatThaiDate(l.startDate, "short")}${
+                          l.endDate !== l.startDate ? ` – ${formatThaiDate(l.endDate, "short")}` : ""
+                        } ตามตารางงานปกติ`,
+                        confirmLabel: "ลบวันลา",
+                        danger: true,
+                      }}
+                    >
                       <input type="hidden" name="id" value={l.id} />
                       <input type="hidden" name="barberId" value={barber.id} />
-                      <ConfirmButton message="ลบวันลานี้?">ลบ</ConfirmButton>
-                    </form>
+                      <SubmitButton className="btn-danger btn-sm" pendingText="...">
+                        ลบ
+                      </SubmitButton>
+                    </ActionForm>
                   </li>
                 ))}
               </ul>

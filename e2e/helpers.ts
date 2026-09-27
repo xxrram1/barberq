@@ -43,3 +43,14 @@ export async function pickBooking(
 
 /** ข้อความแจ้งเตือนของแอป (ไม่นับตัวประกาศการเปลี่ยนหน้าที่ Next.js ใส่ role="alert" ไว้) */
 export const appAlert = (page: Page) => page.locator('[role="alert"]:not(#__next-route-announcer__)');
+
+/** กดปุ่มยืนยันในหน้าต่างยืนยันของเว็บ (แทน confirm() ของเบราว์เซอร์) */
+export async function confirmDialog(page: Page, confirmLabel: string | RegExp) {
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: confirmLabel }).click();
+  await expect(dialog).toBeHidden();
+}
+
+/** toast แจ้งผลหลังบันทึก */
+export const toast = (page: Page, text: string | RegExp) => page.locator("[data-toast]").filter({ hasText: text });

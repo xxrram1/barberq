@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import QRCode from "qrcode";
-import { appAlert, login, openDate, pickBooking, USERS } from "./helpers";
+import { appAlert, confirmDialog, login, openDate, pickBooking, toast, USERS } from "./helpers";
 
 async function bookAndOpenDetail(page: Page, dateOffset: number) {
   await login(page, USERS.demo);
@@ -40,6 +40,8 @@ test("จ่ายมัดจำด้วย PromptPay → ส่งสลิ�
   expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
   await admin.screenshot({ path: "test-results/screens/admin-slip.png", fullPage: true });
   await admin.getByRole("button", { name: /ยอดเข้าแล้ว ยืนยันคิว/ }).click();
+  await confirmDialog(admin, "ยอดเข้าแล้ว");
+  await expect(toast(admin, "ยืนยันการชำระแล้ว")).toBeVisible();
   await expect(admin.getByText("ชำระมัดจำแล้ว")).toBeVisible();
   await expect(admin.getByText("ยืนยันแล้ว").first()).toBeVisible();
   await adminCtx.close();
@@ -62,6 +64,7 @@ test("แอดมินปฏิเสธสลิป ลูกค้าส่�
   await login(admin, USERS.admin);
   await admin.goto(`/admin/bookings/${id}`);
   await admin.getByRole("button", { name: "สลิปไม่ถูกต้อง" }).click();
+  await confirmDialog(admin, "สลิปไม่ถูกต้อง");
   await expect(admin.getByText("สลิปไม่ผ่าน")).toBeVisible();
   await adminCtx.close();
 

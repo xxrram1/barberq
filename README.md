@@ -1,36 +1,147 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ✂ BarberQ: ระบบจองคิวร้านตัดผมออนไลน์
 
-## Getting Started
+เว็บแอปจองคิวแบบ full-stack ลูกค้าเลือกบริการ ช่าง และเวลาว่างได้แบบเรียลไทม์ ส่วนเจ้าของร้านจัดการคิว บริการ และช่างได้จากหน้าหลังร้าน
 
-First, run the development server:
+> 🔗 **Live demo:** _(ใส่ลิงก์หลัง deploy)_
+>
+> 🔑 **บัญชีทดลอง:** ลูกค้า `demo@barberq.dev` / `demo1234` · แอดมิน `admin@barberq.dev` / `admin1234`
+
+<!-- แนะนำ: ใส่ภาพหน้าจอไว้ที่ docs/ แล้วเปิดคอมเมนต์ด้านล่าง
+![หน้าจองคิว](docs/booking.png)
+![Dashboard แอดมิน](docs/admin.png)
+-->
+
+## ฟีเจอร์
+
+**ฝั่งลูกค้า**
+- สมัครสมาชิก / เข้าสู่ระบบ (ตรวจข้อมูลในฟอร์มทั้งฝั่ง client และ server)
+- จองคิวทีละขั้น: เลือกบริการ → ช่าง (หรือ "ช่างคนไหนก็ได้") → วัน → เวลา
+- ช่องเวลาว่างคำนวณสดจากคิวที่มีอยู่ ระยะเวลาของบริการ **กะงานและวันลาของช่างแต่ละคน** และวันหยุดร้าน
+- **จ่ายมัดจำผ่าน QR พร้อมเพย์** (ยอดเงินฝังใน QR) แล้วอัปโหลดสลิป
+- หน้า "คิวของฉัน" ดูคิวที่กำลังจะถึงกับประวัติย้อนหลัง และยกเลิกเองได้ก่อนเวลานัด 2 ชม.
+
+**ฝั่งแอดมิน (หลังร้าน)**
+- Dashboard: สรุปตัวเลขประจำวัน/เดือน และ **ตาราง timeline แยกคอลัมน์ตามช่าง** พร้อมเส้นบอกเวลาปัจจุบัน
+- จัดการคิว: กรองตามวัน สถานะ และชื่อหรือเบอร์ลูกค้า เปลี่ยนสถานะ รอยืนยัน → ยืนยันแล้ว → เสร็จสิ้น หรือยกเลิก
+- **จองให้ลูกค้า** (โทรมาจอง / walk-in): กรอกเบอร์โทร ถ้าเบอร์นี้มีบัญชีอยู่แล้วระบบเติมชื่อให้ และคิวจะไปแสดงในบัญชีลูกค้า ถ้าไม่มีบัญชีก็จองได้ด้วยชื่อกับเบอร์ คิวยืนยันทันที ไม่เก็บมัดจำ และเลือกเวลาที่เริ่มได้ทันทีได้
+- **ตรวจสลิปมัดจำ**: กด "ยอดเข้าแล้ว" แล้วคิวจะถูกยืนยันให้อัตโนมัติ หรือกด "สลิปไม่ถูกต้อง" ให้ลูกค้าส่งใหม่
+- จัดการบริการ (ชื่อ ราคา ระยะเวลา) และช่าง: เพิ่ม แก้ไข เปิด/ปิดได้ โดยคิวเก่าไม่หาย
+- **รูปโปรไฟล์ช่าง**: อัปโหลดแล้วระบบตัดเป็นจัตุรัส 512px และย่อขนาดให้ในเบราว์เซอร์ รูปแสดงในหน้าแรกและหน้าจอง (URL มีเลขเวอร์ชันต่อท้าย จึงตั้ง cache แบบ `immutable` ได้)
+- **ตารางงานช่าง**: ตั้งเวลาเข้า-ออกแยกแต่ละวัน และบันทึกวันลา ถ้ามีคิวค้างในช่วงลา ระบบจะแสดงรายการและให้กดยืนยันอีกครั้งก่อนบันทึก
+
+## Tech Stack
+
+| ส่วน | เทคโนโลยี |
+|---|---|
+| Framework | **Next.js 16** (App Router, Server Components, Server Actions, Proxy) |
+| ภาษา | TypeScript |
+| UI | Tailwind CSS v4, ฟอนต์ Prompt + Noto Sans Thai |
+| Database | SQLite ผ่าน **libSQL** (ในเครื่องใช้ไฟล์ / production ใช้ Turso) + **Drizzle ORM** |
+| Auth | เขียนเอง: bcrypt + JWT (jose) ใน httpOnly cookie |
+| Validation | Zod |
+| Payment | PromptPay QR (เขียนตัวสร้าง payload EMVCo เอง) + `qrcode` |
+| Testing / CI | Vitest (unit), Playwright (E2E), GitHub Actions |
+
+## จุดที่น่าสนใจทางเทคนิค
+
+### 1. กันการจองซ้อน (race condition)
+ถ้าลูกค้าสองคนกดจองช่องเดียวกันในเวลาเดียวกัน ระบบจะ **ตรวจช่องว่างซ้ำและ insert ภายใน write transaction เดียวกัน** ([`book/actions.ts`](src/app/book/actions.ts)) และเนื่องจาก SQLite ยอมให้มี write transaction ได้ทีละอัน คนที่มาทีหลังจะเห็นข้อมูลล่าสุดเสมอ แล้วได้ข้อความว่า "ช่วงเวลานี้เพิ่งถูกจองไป" พร้อมโหลดช่องเวลาใหม่ให้อัตโนมัติ
+
+ตรรกะนี้อยู่ใน [`lib/booking-service.ts`](src/lib/booking-service.ts) ที่เดียว และใช้ร่วมกันทั้งลูกค้าจองเองกับร้านจองให้ กฎจึงไม่มีทางแตกต่างกันระหว่างสองทาง
+
+มี E2E test ยืนยันเรื่องนี้ด้วย: เปิดเบราว์เซอร์ 2 ตัว ล็อกอินเป็นลูกค้าคนละคน เลือกช่องเดียวกัน แล้วกดจองพร้อมกัน ผลต้องออกมาว่าสำเร็จ 1 คน และอีกคนได้ข้อความแจ้ง ([`booking.spec.ts`](e2e/booking.spec.ts))
+
+### 2. ตรรกะช่องเวลาเป็น pure function
+[`lib/slots.ts`](src/lib/slots.ts) ไม่แตะฐานข้อมูลเลย รับกะงานและคิวของช่างแต่ละคนเข้าไป แล้วคืนช่องที่ว่างพร้อมรายชื่อช่างที่ว่าง จึงเขียน unit test ครอบคลุมเคสยากๆ ได้ง่าย เช่น เวลาชนขอบ บริการที่ยาวเกินกะงาน ช่างกะเช้ากับกะบ่ายในวันเดียวกัน วันลา หรือการจองล่วงหน้าขั้นต่ำ ([`slots.test.ts`](src/lib/slots.test.ts))
+
+### 3. เก็บเวลาแบบไม่มีปัญหา timezone
+คิวเก็บเป็น `date` (YYYY-MM-DD ตามเวลาร้าน) + `startMin` / `endMin` (นาทีนับจากเที่ยงคืน) การเช็กว่าเวลาทับกันจึงเหลือแค่เทียบตัวเลข `a.start < b.end && b.start < a.end` ส่วน "เวลาปัจจุบัน" คำนวณด้วย `Asia/Bangkok` เสมอ ([`lib/time.ts`](src/lib/time.ts)) เซิร์ฟเวอร์จะรันที่ timezone ไหนผลก็ถูกต้อง
+
+### 4. ความปลอดภัยแบบหลายชั้น
+- **Proxy** ([`proxy.ts`](src/proxy.ts)) เป็นด่านแรก เช็ก JWT แล้ว redirect ให้เร็ว
+- **ทุก page และ server action** เรียก `requireUser()` / `requireAdmin()` ซ้ำ โดยดึง user จาก DB ทุกครั้ง ถ้าเปลี่ยน role หรือลบผู้ใช้จะมีผลทันที
+- รหัสผ่าน hash ด้วย bcrypt เวลาไม่พบอีเมลจะเทียบกับ hash หลอก เพื่อกันการเดาอีเมลจากเวลาตอบกลับ (timing attack)
+- Cookie ตั้งเป็น `httpOnly`, `sameSite=lax` และเปิด `secure` ใน production
+- ตรวจพารามิเตอร์ `?next=` กัน open redirect ([`lib/url.ts`](src/lib/url.ts))
+- ข้อมูลที่ส่งเข้ามาผ่าน Zod ทั้งหมด การอัปเดตคิวของลูกค้าผูกกับ `userId` เสมอ แก้คิวของคนอื่นไม่ได้
+
+### 5. PromptPay QR เขียนเองตามมาตรฐาน EMVCo
+[`lib/promptpay.ts`](src/lib/promptpay.ts) ประกอบข้อความ QR ทีละช่อง (รหัสพร้อมเพย์ของร้าน ยอดเงิน สกุลเงิน ประเทศ) แล้วปิดท้ายด้วย checksum แบบ CRC-16/CCITT มี unit test ที่เทียบผลกับ library `promptpay-qr` ซึ่งใช้กันแพร่หลาย ต้องตรงกันทุกตัวอักษร แอปธนาคารจึงสแกนได้จริงและยอดเงินขึ้นให้เอง
+
+### 6. อัปโหลดสลิปอย่างปลอดภัย
+- **ย่อรูปในเบราว์เซอร์ก่อนส่ง** (canvas → JPEG) รูปจากมือถือหลาย MB เหลือไม่กี่ร้อย KB
+- **ตรวจชนิดไฟล์จาก magic bytes** ([`lib/slip.ts`](src/lib/slip.ts)) ไม่เชื่อนามสกุลหรือ MIME type ที่ส่งมา ไฟล์ SVG หรือ HTML ที่ตั้งชื่อเป็น `.png` จะถูกปฏิเสธ
+- รูปสลิปเปิดได้เฉพาะเจ้าของคิวกับแอดมิน ([`api/slips/[bookingId]`](src/app/api/slips/[bookingId]/route.ts)) ถ้าไม่มีสิทธิ์จะตอบ 404 เหมือนกรณีไม่มีคิวนั้น จะได้เดาไม่ได้ว่าคิวไหนมีอยู่จริง และส่ง header `nosniff` กับ CSP กำกับไว้
+- ตอนนี้เก็บรูปไว้ในฐานข้อมูลเพื่อให้ deploy ง่าย ถ้าใช้งานจริงควรย้ายไปเก็บที่ S3 หรือ Cloudflare R2
+
+## การทดสอบ
+
+| ชนิด | จำนวน | ครอบคลุมอะไร |
+|---|---|---|
+| Unit (Vitest) | 51 | ตรรกะช่องเวลา กะงาน วันลา PromptPay payload / CRC การตรวจชนิดไฟล์ เบอร์โทร |
+| E2E (Playwright) | 20 | สมัคร/ล็อกอิน, รูปโปรไฟล์ช่าง, จองและยกเลิก, **จองชนกันพร้อมกัน**, สิทธิ์แอดมิน, วันลาและกะงาน, จ่ายมัดจำ → ตรวจสลิป, คนอื่นดูสลิปไม่ได้, ไฟล์ปลอม, ร้านจองให้ลูกค้า (มี/ไม่มีบัญชี) |
+
+E2E ใช้ฐานข้อมูลแยก (`e2e.db`) ที่สร้างใหม่ทุกครั้ง และรันบน production build จริง
+
+## เริ่มต้นใช้งาน
+
+ต้องมี Node.js 20 ขึ้นไป
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local        # แล้วใส่ SESSION_SECRET (คำสั่งสร้างอยู่ในไฟล์)
+npm run db:setup                  # สร้างตาราง + ข้อมูลตัวอย่าง
+npm run dev                       # เปิด http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| คำสั่ง | ใช้ทำอะไร |
+|---|---|
+| `npm run dev` | รัน dev server |
+| `npm test` | รัน unit tests |
+| `npm run e2e` | รัน E2E tests (ครั้งแรกต้องรัน `npx playwright install chromium` ก่อน) |
+| `npm run e2e:ui` | เปิด Playwright UI ดูเทสต์ทีละขั้น |
+| `npm run typecheck` / `npm run lint` | ตรวจ type และ lint |
+| `npm run db:push` | sync schema เข้า database |
+| `npm run db:seed` | ล้างข้อมูลแล้วใส่ข้อมูลตัวอย่างใหม่ |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+ตั้งค่าร้าน (เวลาเปิดปิด วันหยุด จองล่วงหน้าได้กี่วัน ค่ามัดจำ ฯลฯ) ได้ที่เดียวใน [`src/lib/config.ts`](src/lib/config.ts) ส่วนเบอร์พร้อมเพย์ที่ใช้รับมัดจำตั้งผ่าน `PROMPTPAY_ID` ใน `.env.local`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy ฟรี (Vercel + Turso)
 
-## Learn More
+1. สร้าง database ที่ [Turso](https://turso.tech) (แนะนำ region สิงคโปร์) แล้วเอา `DATABASE_URL` (`libsql://...`) กับ `DATABASE_AUTH_TOKEN` มา
+2. สร้างไฟล์ `.env.deploy` (ไฟล์นี้ไม่ถูก commit) ใส่ `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `SESSION_SECRET`, `PROMPTPAY_ID`
+3. รัน `npm run db:setup:deploy` เพื่อสร้างตารางและใส่ข้อมูลตัวอย่างบน Turso (seed ปกติจะไม่ยอมรันกับฐานข้อมูลบนคลาวด์ ต้องใช้คำสั่งนี้ซึ่งใส่ `--allow-remote` ไว้แล้ว)
+4. Import repo เข้า [Vercel](https://vercel.com) แล้ววางเนื้อหาไฟล์ `.env.deploy` ลงช่อง Environment Variables (วางทั้งไฟล์ได้เลย Vercel แยกให้เอง)
+5. Deploy ครั้งต่อๆ ไปแค่ `git push` แล้ว Vercel จะ build ใหม่ให้เอง
 
-To learn more about Next.js, take a look at the following resources:
+> ถ้าเปิดเป็น demo สาธารณะ บัญชีแอดมินทดลองใครก็ล็อกอินได้ ถ้าข้อมูลรกให้รัน `npm run db:setup:deploy` อีกครั้งเพื่อรีเซ็ต
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## โครงสร้างโปรเจค
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/
+│   ├── (auth)/           # login, register + server actions
+│   ├── book/             # หน้าจองคิว (wizard) + action สร้างการจอง
+│   ├── bookings/         # คิวของฉัน, รายละเอียดคิว + QR พร้อมเพย์ + อัปโหลดสลิป
+│   ├── admin/            # dashboard, คิว + ตรวจสลิป, บริการ, ช่าง + ตารางงาน/วันลา
+│   └── api/              # GET ช่องเวลาว่าง, GET รูปสลิป (ตรวจสิทธิ์)
+├── db/                   # schema, connection, seed
+├── lib/
+│   ├── slots.ts          # ตรรกะช่องเวลาว่าง กะงาน วันลา (pure + tested)
+│   ├── availability.ts   # ดึงข้อมูลจาก DB แล้วส่งต่อให้ slots.ts
+│   ├── promptpay.ts      # สร้าง payload QR พร้อมเพย์ (EMVCo + CRC16)
+│   ├── slip.ts           # ตรวจชนิดไฟล์จาก magic bytes
+│   ├── auth.ts           # session, requireUser, requireAdmin
+│   └── ...
+└── proxy.ts              # ด่านตรวจ auth ก่อนเข้า route
+e2e/                      # Playwright tests + สคริปต์เตรียมฐานข้อมูลทดสอบ
+```
 
-## Deploy on Vercel
+## สิ่งที่พัฒนาต่อได้
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- ยืนยันเบอร์โทรด้วย OTP แล้วผูกคิวที่ร้านเคยจองให้ (ตอนยังไม่มีบัญชี) เข้ากับบัญชีที่สมัครทีหลังอัตโนมัติ
+- แจ้งเตือนผ่าน LINE Messaging API / อีเมลเมื่อคิวถูกยืนยันหรือใกล้ถึงเวลา
+- ตรวจสลิปอัตโนมัติผ่าน API ตรวจสลิป หรือรับชำระผ่าน payment gateway (Opn / 2C2P)
+- Rate limit การล็อกอิน และยืนยันอีเมล
+- ย้ายรูปสลิปไปเก็บที่ object storage (S3 / R2)

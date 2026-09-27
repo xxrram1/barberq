@@ -3,11 +3,11 @@ export function Skeleton({ className = "" }: { className?: string }) {
   return <div aria-hidden className={`animate-pulse rounded-lg bg-stone-200/80 ${className}`} />;
 }
 
-/** แถบลายเสาร้านตัดผมวิ่ง แสดงด้านบนสุดระหว่างเปลี่ยนหน้า */
+/** แถบสีทองวิ่งด้านบนสุดระหว่างเปลี่ยนหน้า (สีต่างจากแถบลายของ navbar จะได้สังเกตเห็น) */
 export function LoadingBar() {
   return (
-    <div role="status" aria-label="กำลังโหลด" className="fixed inset-x-0 top-0 z-50 h-1 overflow-hidden">
-      <div className="barber-stripe loading-bar h-full w-[200%]" />
+    <div role="status" aria-label="กำลังโหลด" className="fixed inset-x-0 top-0 z-50 h-1 overflow-hidden bg-brass/20">
+      <div className="loading-bar h-full w-1/3 rounded-full bg-brass shadow-[0_0_8px_var(--color-brass)]" />
     </div>
   );
 }

@@ -60,17 +60,17 @@ body {
   @apply rounded-2xl border border-line bg-white;
 }
 
-/* แถบโหลดลายเสาร้านตัดผมวิ่งไปทางขวา */
-@keyframes barber-slide {
+/* แถบโหลดวิ่งจากซ้ายไปขวาวนไปเรื่อยๆ */
+@keyframes loading-slide {
   from {
-    transform: translateX(-50%);
+    transform: translateX(-100%);
   }
   to {
-    transform: translateX(0);
+    transform: translateX(300%);
   }
 }
 .loading-bar {
-  animation: barber-slide 1.2s linear infinite;
+  animation: loading-slide 1.1s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .loading-bar {
